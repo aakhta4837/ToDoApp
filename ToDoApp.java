@@ -8,7 +8,7 @@ import javafx.stage.Stage;
 public class ToDoApp extends Application {
 
     private MaxHeap heap = new MaxHeap(50);
-    private ListView<String> listView = new ListView<>();
+    private ListView<Task> listView = new ListView<>();
 
     // Time dropdowns
     private ComboBox<Integer> hourBox = new ComboBox<>();
@@ -19,17 +19,14 @@ public class ToDoApp extends Application {
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Priority To-Do List");
 
-        // --- Task Description ---
         Label descLabel = new Label("Task Description:");
         TextField descField = new TextField();
 
-        // --- Priority dropdown ---
         Label priorityLabel = new Label("Priority (1–10):");
         ComboBox<Integer> priorityBox = new ComboBox<>();
         for (int i = 1; i <= 10; i++) priorityBox.getItems().add(i);
         priorityBox.setPromptText("Select");
 
-        // --- Time selectors ---
         Label timeLabel = new Label("Choose Time:");
         for (int i = 1; i <= 12; i++) hourBox.getItems().add(i);
         for (int i = 0; i < 60; i++) minuteBox.getItems().add(i);
@@ -40,14 +37,12 @@ public class ToDoApp extends Application {
 
         HBox timeRow = new HBox(10, hourBox, minuteBox, ampmBox);
 
-        // --- Buttons ---
         Button addButton = new Button("Add Task");
         Button viewButton = new Button("View Highest Priority");
         Button completeButton = new Button("Complete Highest Priority");
 
         Label outputLabel = new Label("");
 
-        // --- Add Button Logic ---
         addButton.setOnAction(e -> {
             try {
                 String desc = descField.getText().trim();
@@ -66,7 +61,6 @@ public class ToDoApp extends Application {
                 heap.insert(new Task(desc, priority, formattedTime));
                 updateList();
 
-                // Clear fields
                 descField.clear();
                 priorityBox.setValue(null);
                 hourBox.setValue(null);
@@ -79,62 +73,59 @@ public class ToDoApp extends Application {
             }
         });
 
-        // --- View Highest Priority ---
         viewButton.setOnAction(e -> {
             Task top = heap.peek();
-            if (top == null) {
-                outputLabel.setText("Heap is empty.");
-            } else {
-                outputLabel.setText("Highest: " + top);
-            }
+            if (top == null) outputLabel.setText("Heap is empty.");
+            else outputLabel.setText("Highest: " + top);
         });
 
-        // --- Complete Highest Priority ---
         completeButton.setOnAction(e -> {
             Task removed = heap.extractMax();
-            if (removed == null) {
-                outputLabel.setText("No tasks to complete.");
-            } else {
-                outputLabel.setText("Completed: " + removed);
-            }
+            if (removed == null) outputLabel.setText("No tasks to complete.");
+            else outputLabel.setText("Completed: " + removed);
             updateList();
         });
 
-        // --- Colored Rows ---
-        listView.setCellFactory(lv -> new ListCell<String>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
+        // ---------- CUSTOM CELL WITH DELETE BUTTON ----------
+        listView.setCellFactory(lv -> new ListCell<Task>() {
 
-                if (empty || item == null) {
+            private final Button deleteButton = new Button("X");
+            private final HBox row = new HBox(10);
+
+            {
+                deleteButton.setOnAction(e -> {
+                    Task task = getItem();
+                    if (task != null) {
+                        heap.remove(task);
+                        getListView().getItems().remove(task);
+                    }
+                });
+                row.getChildren().add(deleteButton);
+            }
+
+            @Override
+            protected void updateItem(Task task, boolean empty) {
+                super.updateItem(task, empty);
+
+                if (empty || task == null) {
                     setText(null);
+                    setGraphic(null);
                     setStyle("");
                     return;
                 }
 
-                setText(item);
+                setText(task.toString());
+                setGraphic(row);
 
-                // Extract priority from string "[7] Task ... Time: ..."
-                int priority = 0;
-                try {
-                    String num = item.substring(item.indexOf("[") + 1, item.indexOf("]"));
-                    priority = Integer.parseInt(num);
-                } catch (Exception ignored) {}
+                int priority = task.getPriority();
 
-                // Set background color based on priority
-                if (priority <= 3) {
-                    setStyle("-fx-background-color: #b6fcb6;"); // light green
-                } else if (priority <= 6) {
-                    setStyle("-fx-background-color: #fff6a3;"); // yellow
-                } else if (priority <= 8) {
-                    setStyle("-fx-background-color: #ffcc85;"); // orange
-                } else {
-                    setStyle("-fx-background-color: #ff8a8a;"); // red
-                }
+                if (priority <= 3) setStyle("-fx-background-color: #b6fcb6;");
+                else if (priority <= 6) setStyle("-fx-background-color: #fff6a3;");
+                else if (priority <= 8) setStyle("-fx-background-color: #ffcc85;");
+                else setStyle("-fx-background-color: #ff8a8a;");
             }
         });
 
-        // --- Layout ---
         VBox layout = new VBox(10,
             descLabel, descField,
             priorityLabel, priorityBox,
@@ -144,7 +135,6 @@ public class ToDoApp extends Application {
             new Label("Current Tasks:"),
             listView
         );
-
         layout.setPadding(new Insets(15));
 
         Scene scene = new Scene(layout, 420, 550);
@@ -155,7 +145,7 @@ public class ToDoApp extends Application {
     private void updateList() {
         listView.getItems().clear();
         for (Task t : heap.getHeapArray()) {
-            listView.getItems().add(t.toString());
+            listView.getItems().add(t);
         }
     }
 
